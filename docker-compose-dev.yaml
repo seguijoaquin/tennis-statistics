@@ -1,0 +1,36 @@
+version: '3'
+services:
+  rabbitmq:
+    build:
+      context: ./rabbitmq
+      dockerfile: rabbitmq.dockerfile
+    ports:
+      - 15672:15672
+  producer:
+    build:
+      context: ./src/app/producer
+      dockerfile: producer.dockerfile
+    volumes:
+      - ${PWD}:/go/src
+    command: tail -F /dev/null
+    restart: on-failure
+    depends_on:
+      - rabbitmq
+    links: 
+      - rabbitmq
+    environment:
+      - producer=1
+  consumer:
+    build:
+      context: ./src/app/consumer
+      dockerfile: consumer.dockerfile
+    command: tail -F /dev/null
+    volumes:
+      - ${PWD}:/go/src
+    restart: on-failure
+    depends_on:
+      - rabbitmq
+    links: 
+      - rabbitmq
+    environment:
+      - consumer=1
