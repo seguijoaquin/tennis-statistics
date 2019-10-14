@@ -1,14 +1,7 @@
-FROM alpine:latest
+FROM golang:alpine
 
-RUN apk add --no-cache vim net-tools git make musl-dev go
+# WORKDIR /go/src/app
 
-# Configure Go
-ENV GOROOT /usr/lib/go
-ENV GOPATH /go
-ENV PATH /go/bin:$PATH
+# RUN go build
 
-RUN mkdir -p ${GOPATH}/src ${GOPATH}/bin
-
-WORKDIR $GOPATH
-
-CMD ["make"]
+# CMD ./app
