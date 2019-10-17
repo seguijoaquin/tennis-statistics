@@ -12,8 +12,9 @@ type Consumer struct {
 }
 
 // NewConsumer returns a Consumer object
-func NewConsumer() *Consumer {
-	return &Consumer{}
+func NewConsumer() (*Consumer, error) {
+	// TODO: Try to initialize dependencies (rabbit)
+	return &Consumer{}, nil
 }
 
 // Run starts the consumer object

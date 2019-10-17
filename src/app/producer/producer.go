@@ -13,8 +13,9 @@ type Producer struct {
 }
 
 // NewProducer returns a Producer object
-func NewProducer() *Producer {
-	return &Producer{}
+func NewProducer() (*Producer, error) {
+	// TODO: Try to initialize dependencies (rabbit)
+	return &Producer{}, nil
 }
 
 func failOnError(err error, msg string) {

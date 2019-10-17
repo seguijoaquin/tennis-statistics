@@ -7,33 +7,30 @@ services:
       dockerfile: rabbitmq.dockerfile
     ports:
       - 15672:15672
-  # producer:
-  #   container_name: producer
-  #   build:
-  #     context: ./src
-  #     dockerfile: app/producer/producer.dockerfile
-  #   volumes:
-  #     - ${PWD}:/go/src
-  #   command: tail -F /dev/null
-  #   restart: on-failure
-  #   # depends_on:
-  #   #   - rabbitmq
-  #   # links: 
-  #   #   - rabbitmq
-  #   environment:
-  #     - module=producer
-  # consumer:
-  #   container_name: consumer
-  #   build:
-  #     context: ./src
-  #     dockerfile: app/consumer/consumer.dockerfile
-  #   command: tail -F /dev/null
-  #   volumes:
-  #     - ${PWD}/src:/go/src
-  #   restart: on-failure
-  #   # depends_on:
-  #   #   - rabbitmq
-  #   # links: 
-  #   #   - rabbitmq
-  #   environment:
-  #     - module=consumer
+  producer:
+    container_name: producer
+    build:
+      context: ./src
+      dockerfile: app/app.dockerfile
+    restart: on-failure
+    command: ./app "feed.games" "A new game" #Sends to feed.games topic
+    # command: tail -F /dev/null
+    depends_on:
+      - rabbitmq
+    links: 
+      - rabbitmq
+    environment:
+      - module=producer # The module running on the app
+  consumer_all:
+    container_name: consumer
+    build:
+      context: ./src
+      dockerfile: app/app.dockerfile
+    restart: on-failure
+    command: ./app "#" # Receive from all topics
+    depends_on:
+      - rabbitmq
+    links: 
+      - rabbitmq
+    environment:
+      - module=consumer # The module running on the app
