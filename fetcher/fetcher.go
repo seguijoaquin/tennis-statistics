@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/Ezetowers/tennis-statistics/common"
+	"github.com/seguijoaquin/tennis-statistics/common"
 )
 
 // Fetcher represents an object that is responsible for reading csv file lines

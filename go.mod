@@ -1,4 +1,4 @@
-module github.com/Ezetowers/tennis-statistics
+module github.com/seguijoaquin/tennis-statistics
 
 go 1.12
 

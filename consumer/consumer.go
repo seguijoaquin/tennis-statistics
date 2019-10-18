@@ -7,7 +7,7 @@ import (
 
 	"github.com/streadway/amqp"
 
-	"github.com/Ezetowers/tennis-statistics/common"
+	"github.com/seguijoaquin/tennis-statistics/common"
 )
 
 // Consumer represents an object that consumes messages

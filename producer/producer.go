@@ -8,7 +8,7 @@ import (
 
 	"github.com/streadway/amqp"
 
-	"github.com/Ezetowers/tennis-statistics/common"
+	"github.com/seguijoaquin/tennis-statistics/common"
 )
 
 // Producer represents an object that produces messages

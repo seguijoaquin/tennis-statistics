@@ -15,16 +15,16 @@ all:
 
 build:
 	go mod vendor
-	GOOS=linux go build -o bin/consumer github.com/Ezetowers/tennis-statistics/consumer
-	GOOS=linux go build -o bin/producer github.com/Ezetowers/tennis-statistics/producer
-	GOOS=linux go build -o bin/fetcher github.com/Ezetowers/tennis-statistics/fetcher
+	GOOS=linux go build -o bin/consumer github.com/seguijoaquin/tennis-statistics/consumer
+	GOOS=linux go build -o bin/producer github.com/seguijoaquin/tennis-statistics/producer
+	GOOS=linux go build -o bin/fetcher github.com/seguijoaquin/tennis-statistics/fetcher
 .PHONY: build
 
 build-darwin:
 	go mod vendor
-	GOOS=darwin go build -o bin/consumer github.com/Ezetowers/tennis-statistics/consumer
-	GOOS=darwin go build -o bin/producer github.com/Ezetowers/tennis-statistics/producer
-	GOOS=darwin go build -o bin/fetcher github.com/Ezetowers/tennis-statistics/fetcher
+	GOOS=darwin go build -o bin/consumer github.com/seguijoaquin/tennis-statistics/consumer
+	GOOS=darwin go build -o bin/producer github.com/seguijoaquin/tennis-statistics/producer
+	GOOS=darwin go build -o bin/fetcher github.com/seguijoaquin/tennis-statistics/fetcher
 .PHONY: build-darwin
 
 docker-image:
