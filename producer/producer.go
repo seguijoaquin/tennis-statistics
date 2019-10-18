@@ -1,11 +1,14 @@
-package producer
+package main
 
 import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/streadway/amqp"
+
+	"github.com/Ezetowers/tennis-statistics/common"
 )
 
 // Producer represents an object that produces messages
@@ -80,4 +83,14 @@ func (p *Producer) Run() {
 	failOnError(err, "Failed to publish a message")
 
 	log.Printf(" [x] Sent %s", body)
+}
+
+func main() {
+	common.Example()
+	p, err := NewProducer()
+	for err != nil {
+		time.Sleep(3 * time.Second)
+		p, err = NewProducer()
+	}
+	p.Run()
 }

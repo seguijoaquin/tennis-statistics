@@ -1,10 +1,13 @@
-package consumer
+package main
 
 import (
 	"log"
 	"os"
+	"time"
 
 	"github.com/streadway/amqp"
+
+	"github.com/Ezetowers/tennis-statistics/common"
 )
 
 // Consumer represents an object that consumes messages
@@ -93,4 +96,14 @@ func failOnError(err error, msg string) {
 	if err != nil {
 		log.Fatalf("%s: %s", msg, err)
 	}
+}
+
+func main() {
+	common.Example()
+	c, err := NewConsumer()
+	for err != nil {
+		time.Sleep(3 * time.Second)
+		c, err = NewConsumer()
+	}
+	c.Run()
 }

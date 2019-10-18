@@ -3,34 +3,32 @@ services:
   rabbitmq:
     container_name: rabbitmq
     build:
-      context: ./rabbitmq
-      dockerfile: rabbitmq.dockerfile
+      context: .
+      dockerfile: dockerfiles/rabbitmq.dockerfile
     ports:
       - 15672:15672
+
   producer:
     container_name: producer
     build:
-      context: ./src
-      dockerfile: app/app.dockerfile
+      context: .
+      dockerfile: producer/Dockerfile
     restart: on-failure
-    command: ./app "feed.games" "A new game" #Sends to feed.games topic
+    entrypoint: /usr/local/sbin/producer "feed.games" "A new game" #Sends to feed.games topic
     # command: tail -F /dev/null
     depends_on:
       - rabbitmq
     links: 
       - rabbitmq
-    environment:
-      - module=producer # The module running on the app
+
   consumer_all:
     container_name: consumer
     build:
-      context: ./src
-      dockerfile: app/app.dockerfile
+      context: .
+      dockerfile: consumer/Dockerfile
     restart: on-failure
-    command: ./app "#" # Receive from all topics
+    entrypoint: /usr/local/sbin/consumer "#" # Receive from all topics
     depends_on:
       - rabbitmq
     links: 
       - rabbitmq
-    environment:
-      - module=consumer # The module running on the app
