@@ -33,13 +33,13 @@ func (p *Consumer) Run() {
 	defer ch.Close()
 
 	err = ch.ExchangeDeclare(
-		"logs_topic", // name
-		"topic",      // type
-		true,         // durable
-		false,        // auto-deleted
-		false,        // internal
-		false,        // no-wait
-		nil,          // arguments
+		"feeds_topic", // name
+		"topic",       // type
+		true,          // durable
+		false,         // auto-deleted
+		false,         // internal
+		false,         // no-wait
+		nil,           // arguments
 	)
 	failOnError(err, "Failed to declare an exchange")
 
@@ -59,11 +59,11 @@ func (p *Consumer) Run() {
 	}
 	for _, s := range os.Args[1:] {
 		log.Printf("Binding queue %s to exchange %s with routing key %s",
-			q.Name, "logs_topic", s)
+			q.Name, "feeds_topic", s)
 		err = ch.QueueBind(
-			q.Name,       // queue name
-			s,            // routing key
-			"logs_topic", // exchange
+			q.Name,        // queue name
+			s,             // routing key
+			"feeds_topic", // exchange
 			false,
 			nil)
 		failOnError(err, "Failed to bind a queue")
@@ -99,7 +99,7 @@ func failOnError(err error, msg string) {
 }
 
 func main() {
-	common.Example()
+	common.WaitForDependencies()
 	c, err := NewConsumer()
 	for err != nil {
 		time.Sleep(3 * time.Second)

@@ -24,7 +24,7 @@ func (p *Fetcher) Run() {
 }
 
 func main() {
-	common.Example()
+	common.WaitForDependencies()
 	f, err := NewFetcher()
 	for err != nil {
 		time.Sleep(3 * time.Second)
