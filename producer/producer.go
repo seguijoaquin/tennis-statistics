@@ -9,7 +9,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/seguijoaquin/tennis-statistics/common"
@@ -21,6 +20,7 @@ type Producer struct {
 	amqpConn   *amqp.Connection
 	feedChan   chan []string
 	doneChan   chan bool
+	doneFilter chan bool
 	args []string
 }
 
@@ -44,14 +44,27 @@ func NewProducer(args []string) (*Producer, error) {
 	)
 	failOnError(err, "Failed to declare an exchange")
 
+	// err = ch.ExchangeDeclare(
+	// 	"producer_end", // name
+	// 	"fanout",           // type
+	// 	true,              // durable
+	// 	false,             // auto-deleted
+	// 	false,             // internal
+	// 	false,             // no-wait
+	// 	nil,               // arguments
+	// )
+	// failOnError(err, "Failed to declare an exchange")
+
 	feedChan := make(chan []string)
 	doneChan := make(chan bool)
+	doneFilter := make(chan bool)
 
 	return &Producer{
 		amqpChan:   ch,
 		amqpConn:   conn,
 		feedChan:   feedChan,
 		doneChan:   doneChan,
+		doneFilter: doneFilter,
 		args: args}, nil
 }
 
@@ -76,6 +89,7 @@ func check(e error) {
 }
 
 func (p *Producer) buildBody(record []string) []byte {
+	//TODO: build body from any source
 	body, err := json.Marshal(common.BuildGameFeedDTO(record))
 	if err != nil {
 		log.Fatal(err)
@@ -83,7 +97,22 @@ func (p *Producer) buildBody(record []string) []byte {
 	return body
 }
 
-func (p *Producer) sendFeed(wg *sync.WaitGroup) {
+func (p *Producer) notifyEnd() {
+	log.Printf("Notify end...\n")
+	// err := p.amqpChan.Publish(
+	// 	"producer_end", // exchange
+	// 	"end.producer.games",      // routing key
+	// 	false,             // mandatory
+	// 	false,             // immediate
+	// 	amqp.Publishing{
+	// 		ContentType: "text/plain",
+	// 		Body:        []byte("END"),
+	// 	})
+	// failOnError(err, "Failed to publish a message")
+	p.doneFilter <- true
+} 
+
+func (p *Producer) dataFilter() {
 	for {
 		select {
 		case feed := <-p.feedChan:
@@ -100,11 +129,11 @@ func (p *Producer) sendFeed(wg *sync.WaitGroup) {
 			failOnError(err, "Failed to publish a message")
 		case <-p.doneChan:
 			log.Printf("Finish Publishing...\n")
-			break
+			goto end_loop
 		}
 	}
-
-	wg.Done()
+end_loop:
+	p.notifyEnd()
 }
 
 func (p *Producer) walkFunction(path string, info os.FileInfo, err error) error {
@@ -149,10 +178,10 @@ func (p *Producer) walkFunction(path string, info os.FileInfo, err error) error 
 }
 
 // Run starts the producer object
-func (p *Producer) Run(wg *sync.WaitGroup) {
+func (p *Producer) Run() {
 	log.Println("Producing...")
 
-	go p.sendFeed(wg)
+	go p.dataFilter()
 
 	err := filepath.Walk("/data", p.walkFunction)
 	if err != nil {
@@ -161,6 +190,7 @@ func (p *Producer) Run(wg *sync.WaitGroup) {
 	}
 
 	p.doneChan <- true
+	<- p.doneFilter
 }
 
 // Close releases all resources taken by a Producer
@@ -173,12 +203,10 @@ func main() {
 	common.WaitForDependencies()
 	args := os.Args
 	p, err := NewProducer(args)
-	var wg sync.WaitGroup
 	for err != nil {
 		time.Sleep(3 * time.Second)
 		p, err = NewProducer(args)
 	}
-	p.Run(&wg)
-	wg.Wait()
+	p.Run()
 	p.Close()
 }
