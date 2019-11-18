@@ -7,7 +7,6 @@ PWD := $(shell pwd)
 
 PRODUCER_IMAGE_NAME = producer
 CONSUMER_IMAGE_NAME = consumer
-FETCHER_IMAGE_NAME = fetcher
 
 default: build
 
@@ -17,20 +16,17 @@ build:
 	go mod vendor
 	GOOS=linux go build -o bin/consumer github.com/seguijoaquin/tennis-statistics/consumer
 	GOOS=linux go build -o bin/producer github.com/seguijoaquin/tennis-statistics/producer
-	GOOS=linux go build -o bin/fetcher github.com/seguijoaquin/tennis-statistics/fetcher
 .PHONY: build
 
 build-darwin:
 	go mod vendor
 	GOOS=darwin go build -o bin/consumer github.com/seguijoaquin/tennis-statistics/consumer
 	GOOS=darwin go build -o bin/producer github.com/seguijoaquin/tennis-statistics/producer
-	GOOS=darwin go build -o bin/fetcher github.com/seguijoaquin/tennis-statistics/fetcher
 .PHONY: build-darwin
 
 docker-image:
 	docker build -f ./producer/Dockerfile -t "$(PRODUCER_IMAGE_NAME):$(GIT_SHA)" .
 	docker build -f ./consumer/Dockerfile -t "$(CONSUMER_IMAGE_NAME):$(GIT_SHA)" .
-	docker build -f ./fetcher/Dockerfile -t "$(FETCHER_IMAGE_NAME):$(GIT_SHA)" .
 .PHONY: docker-image
 
 docker-compose-up:
