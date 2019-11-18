@@ -4,93 +4,63 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"github.com/streadway/amqp"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/seguijoaquin/tennis-statistics/common"
+	"github.com/seguijoaquin/tennis-statistics/common/communication/broker"
+
+	"github.com/seguijoaquin/tennis-statistics/common/domain"
+
+	"github.com/seguijoaquin/tennis-statistics/common/utils"
 )
 
 // Producer represents an object that produces messages
 type Producer struct {
-	amqpChan   *amqp.Channel
-	amqpConn   *amqp.Connection
+	broker     *broker.MessageBroker
 	feedChan   chan []string
 	doneChan   chan bool
 	doneFilter chan bool
-	args []string
+	args       []string
 }
 
 // NewProducer returns a Producer object
 func NewProducer(args []string) (*Producer, error) {
-	// TODO: Try to initialize dependencies (rabbit)
-	conn, err := amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
-	failOnError(err, "Failed to connect to RabbitMQ")
-
-	ch, err := conn.Channel()
-	failOnError(err, "Failed to open a channel")
-
-	err = ch.ExchangeDeclare(
-		args[1], // name
-		"topic",           // type
-		true,              // durable
-		false,             // auto-deleted
-		false,             // internal
-		false,             // no-wait
-		nil,               // arguments
-	)
-	failOnError(err, "Failed to declare an exchange")
-
-	// err = ch.ExchangeDeclare(
-	// 	"producer_end", // name
-	// 	"fanout",           // type
-	// 	true,              // durable
-	// 	false,             // auto-deleted
-	// 	false,             // internal
-	// 	false,             // no-wait
-	// 	nil,               // arguments
-	// )
-	// failOnError(err, "Failed to declare an exchange")
-
 	feedChan := make(chan []string)
 	doneChan := make(chan bool)
 	doneFilter := make(chan bool)
 
+	broker, _ := broker.GetBroker(args[1])
+
 	return &Producer{
-		amqpChan:   ch,
-		amqpConn:   conn,
+		broker:     broker,
 		feedChan:   feedChan,
 		doneChan:   doneChan,
 		doneFilter: doneFilter,
-		args: args}, nil
+		args:       args}, nil
 }
 
 func (p *Producer) getExchangeName() string {
 	return p.args[1]
 }
 
-func (p *Producer) getRoutingKey() string {
+func (p *Producer) getKey() string {
 	return p.args[2]
-}
-
-func failOnError(err error, msg string) {
-	if err != nil {
-		log.Fatalf("%s: %s", msg, err)
-	}
-}
-
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
 }
 
 func (p *Producer) buildBody(record []string) []byte {
 	//TODO: build body from any source
-	body, err := json.Marshal(common.BuildGameFeedDTO(record))
+	body, err := json.Marshal(domain.BuildGameFeedDTO(record))
+	if err != nil {
+		log.Fatal(err)
+	}
+	return body
+}
+
+func (p *Producer) buildEndMessage() []byte {
+	body, err := json.Marshal(domain.BuildEndMessage())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -99,34 +69,24 @@ func (p *Producer) buildBody(record []string) []byte {
 
 func (p *Producer) notifyEnd() {
 	log.Printf("Notify end...\n")
-	// err := p.amqpChan.Publish(
-	// 	"producer_end", // exchange
-	// 	"end.producer.games",      // routing key
-	// 	false,             // mandatory
-	// 	false,             // immediate
-	// 	amqp.Publishing{
-	// 		ContentType: "text/plain",
-	// 		Body:        []byte("END"),
-	// 	})
-	// failOnError(err, "Failed to publish a message")
+	p.broker.Post(
+		p.getExchangeName(),
+		p.getKey(),
+		p.buildEndMessage())
 	p.doneFilter <- true
-} 
+}
 
 func (p *Producer) dataFilter() {
 	for {
 		select {
 		case feed := <-p.feedChan:
 			body := p.buildBody(feed)
-			err := p.amqpChan.Publish(
-				p.getExchangeName(), // exchange
-				p.getRoutingKey(),      // routing key
-				false,             // mandatory
-				false,             // immediate
-				amqp.Publishing{
-					ContentType: "text/plain",
-					Body:        body,
-				})
-			failOnError(err, "Failed to publish a message")
+			err := p.broker.Post(
+				p.getExchangeName(),
+				p.getKey(),
+				body,
+			)
+			utils.FailOnError(err, "Failed to publish a message")
 		case <-p.doneChan:
 			log.Printf("Finish Publishing...\n")
 			goto end_loop
@@ -190,17 +150,16 @@ func (p *Producer) Run() {
 	}
 
 	p.doneChan <- true
-	<- p.doneFilter
+	<-p.doneFilter
 }
 
 // Close releases all resources taken by a Producer
 func (p *Producer) Close() {
-	p.amqpChan.Close()
-	p.amqpConn.Close()
+	p.broker.Close()
 }
 
 func main() {
-	common.WaitForDependencies()
+	utils.WaitForDependencies()
 	args := os.Args
 	p, err := NewProducer(args)
 	for err != nil {

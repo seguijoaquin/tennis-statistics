@@ -19,10 +19,6 @@ services:
     volumes:
       # - ${PWD}/data/atp-tennis-matches:/data
       - ${PWD}/data/sample:/data
-    environment:
-      - BULK_SIZE=1
-      - ROUTING_KEY="game.feed"
-      - EXCHANGE_NAME="feeds_topic"
     depends_on:
       - rabbitmq
     links: 
@@ -34,7 +30,7 @@ services:
       context: .
       dockerfile: consumer/Dockerfile
     restart: on-failure
-    entrypoint: /usr/local/sbin/consumer "#" # Receive from all routing keys
+    entrypoint: /usr/local/sbin/consumer "game.*" # Receive from all routing keys
     depends_on:
       - rabbitmq
     links: 

@@ -1,13 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"os"
-	"time"
 
-	"github.com/streadway/amqp"
-
-	"github.com/seguijoaquin/tennis-statistics/common"
+	"github.com/seguijoaquin/tennis-statistics/common/communication/broker"
+	"github.com/seguijoaquin/tennis-statistics/common/domain"
+	"github.com/seguijoaquin/tennis-statistics/common/utils"
 )
 
 // Consumer represents an object that consumes messages
@@ -16,7 +16,6 @@ type Consumer struct {
 
 // NewConsumer returns a Consumer object
 func NewConsumer() (*Consumer, error) {
-	// TODO: Try to initialize dependencies (rabbit)
 	return &Consumer{}, nil
 }
 
@@ -24,86 +23,39 @@ func NewConsumer() (*Consumer, error) {
 func (p *Consumer) Run() {
 	log.Println("Consuming...")
 
-	conn, err := amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
-	failOnError(err, "Failed to connect to RabbitMQ")
-	defer conn.Close()
+	broker, err := broker.GetBroker("feeds_topic")
+	utils.FailOnError(err, "Error getting broker")
+	defer broker.Close()
 
-	ch, err := conn.Channel()
-	failOnError(err, "Failed to open a channel")
-	defer ch.Close()
+	broker.DeclareUnnamedMessageQueue()
+	broker.BindTopicsToQueue("feeds_topic", os.Args[1:])
 
-	err = ch.ExchangeDeclare(
-		"feeds_topic", // name
-		"topic",       // type
-		true,          // durable
-		false,         // auto-deleted
-		false,         // internal
-		false,         // no-wait
-		nil,           // arguments
-	)
-	failOnError(err, "Failed to declare an exchange")
+	msgs, err := broker.GetMessages()
+	utils.FailOnError(err, "Failed to register a consumer")
 
-	q, err := ch.QueueDeclare(
-		"",    // name
-		false, // durable
-		false, // delete when usused
-		true,  // exclusive
-		false, // no-wait
-		nil,   // arguments
-	)
-	failOnError(err, "Failed to declare a queue")
-
-	if len(os.Args) < 2 {
-		log.Printf("Usage: %s [binding_key]...", os.Args[0])
-		os.Exit(0)
-	}
-	for _, s := range os.Args[1:] {
-		log.Printf("Binding queue %s to exchange %s with routing key %s",
-			q.Name, "feeds_topic", s)
-		err = ch.QueueBind(
-			q.Name,        // queue name
-			s,             // routing key
-			"feeds_topic", // exchange
-			false,
-			nil)
-		failOnError(err, "Failed to bind a queue")
-	}
-
-	msgs, err := ch.Consume(
-		q.Name, // queue
-		"",     // consumer
-		true,   // auto ack
-		false,  // exclusive
-		false,  // no local
-		false,  // no wait
-		nil,    // args
-	)
-	failOnError(err, "Failed to register a consumer")
-
-	forever := make(chan bool)
+	done := make(chan bool)
 
 	go func() {
 		for d := range msgs {
+			var dto domain.GameFeedDTO
+			json.Unmarshal(d.Body, &dto)
+
 			log.Printf(" [x] %s", d.Body)
+
+			if dto.Finished {
+				break
+			}
 		}
+		log.Printf("Finished consuming messages")
+		done <- true
 	}()
 
-	log.Printf(" [*] Waiting for logs. To exit press CTRL+C")
-	<-forever
-}
-
-func failOnError(err error, msg string) {
-	if err != nil {
-		log.Fatalf("%s: %s", msg, err)
-	}
+	log.Printf(" [*] Waiting for Feed ...")
+	<-done
 }
 
 func main() {
-	common.WaitForDependencies()
-	c, err := NewConsumer()
-	for err != nil {
-		time.Sleep(3 * time.Second)
-		c, err = NewConsumer()
-	}
+	utils.WaitForDependencies()
+	c, _ := NewConsumer()
 	c.Run()
 }
